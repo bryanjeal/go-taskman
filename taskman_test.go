@@ -30,7 +30,7 @@ import (
 var nilFunc = func(args ...interface{}) error { return nil }
 var printNameFunc = func(args ...interface{}) error { glog.Infoln(args[0].(string), "Running"); return nil }
 
-var errStdError = errors.New("Error!")
+var errStdError = errors.New("errStdError")
 
 type expectedErrs struct {
 	new     error
@@ -61,75 +61,80 @@ var cases = []struct {
 	{"Always Error", func(args ...interface{}) error { glog.Infoln("Always Error", "Running"); return errStdError }, nil, expectedErrs{
 		errChan: errStdError,
 	}},
-	{"Run Long", func(args ...interface{}) error { time.Sleep(1 * time.Second); return nil }, nil, expectedErrs{}},
+	{"Run Long", func(args ...interface{}) error { time.Sleep(100 * time.Millisecond); return nil }, nil, expectedErrs{}},
 }
 
 func TestTaskMan(t *testing.T) {
 	// init
+	assert := assert.New(t)
 	taskman := NewTaskManager()
 
-	// run tests
-	t.Run("New", func(t *testing.T) {
-		assert := assert.New(t)
+	// test: New
+	for _, c := range cases {
+		err := taskman.New(c.name, c.function)
+		assert.Equal(c.expected.new, err)
+	}
 
-		for _, c := range cases {
-			err := taskman.New(c.name, c.function)
-			assert.Equal(c.expected.new, err)
+	// test: Run
+	for _, c := range cases {
+		errChan, err := taskman.Run(c.name, c.args)
+		assert.Equal(c.expected.run, err)
+		assert.Equal(c.expected.errChan, <-errChan)
+	}
+	errChan, err := taskman.Run("Task Not In Store", nil)
+	assert.Equal(ErrTaskNotFound, err)
+	assert.Equal(nil, <-errChan)
+
+	// test: RunTask
+	for _, c := range cases {
+		t := Task{
+			Func: c.function,
 		}
-	})
+		_, errChan, err := taskman.RunTask(t, c.args)
+		assert.Equal(c.expected.runTask, err)
+		assert.Equal(c.expected.errChan, <-errChan)
+	}
 
-	t.Run("Run", func(t *testing.T) {
-		assert := assert.New(t)
-
-		for _, c := range cases {
-			errChan, err := taskman.Run(c.name, c.args)
-			assert.Equal(c.expected.run, err)
-			assert.Equal(c.expected.errChan, <-errChan)
-		}
-	})
-
-	t.Run("RunTask", func(t *testing.T) {
-		assert := assert.New(t)
-		for _, c := range cases {
-			t := Task{
-				Func: c.function,
-			}
-			errChan, err := taskman.RunTask(t, c.args)
-			assert.Equal(c.expected.runTask, err)
-			assert.Equal(c.expected.errChan, <-errChan)
-		}
-	})
-
-	t.Run("RunTaskShutdown", func(t *testing.T) {
-		assert := assert.New(t)
-
-		// run forever
-		quit := make(chan struct{})
-		task := Task{
-			Func: func(args ...interface{}) error {
-				count := 0
-				for {
-					select {
-					case <-quit:
-						fmt.Println("Run Forever. Quit Activated.")
-						return nil
-					default:
-						fmt.Println("Run Forever. Loop:", count)
-						count++
-						time.Sleep(250 * time.Millisecond)
-					}
+	// test: RunTaskShutdown
+	// run forever
+	quit := make(chan struct{})
+	task := Task{
+		Func: func(args ...interface{}) error {
+			count := 0
+			for {
+				select {
+				case <-quit:
+					fmt.Println("Run Forever. Quit Activated.")
+					return nil
+				default:
+					fmt.Println("Run Forever. Loop:", count)
+					count++
+					time.Sleep(100 * time.Millisecond)
 				}
-			},
-			Quit: quit,
-		}
+			}
+		},
+		Quit: quit,
+	}
 
-		_, err := taskman.RunTask(task, nil)
-		assert.Equal(nil, err)
-		time.Sleep(1 * time.Second)
-		taskman.Shutdown()
+	_, _, err = taskman.RunTask(task, nil)
+	assert.Equal(nil, err)
+	time.Sleep(500 * time.Millisecond)
+	taskman.Shutdown()
 
-		_, err = taskman.Run(cases[0].name, cases[0].args)
-		assert.Equal(ErrNotActive, err)
-		time.Sleep(1 * time.Second)
-	})
+	// test: Shutdown/Active errors
+	err = taskman.New("A New Task", nilFunc)
+	assert.Equal(ErrNotActive, err)
+	_, err = taskman.Run(cases[0].name, cases[0].args)
+	assert.Equal(ErrNotActive, err)
+	_, _, err = taskman.RunTask(task, nil)
+	assert.Equal(ErrNotActive, err)
+
+	// test: Check
+	errs := taskman.Check("Always Error")
+	assert.Equal(errs, []error{errStdError})
+	errs = taskman.Check("")
+	assert.Equal(errs, []error{ErrInvalidName})
+	errs = taskman.Check("Task Not In Store")
+	assert.Equal(errs, []error{ErrTaskNotFound})
+	time.Sleep(250 * time.Millisecond)
 }

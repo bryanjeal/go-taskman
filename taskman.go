@@ -45,7 +45,7 @@ type Service interface {
 	Run(name string, args ...interface{}) (chan error, error)
 
 	// RunTask takes a Task and queues it to run
-	RunTask(task Task) (chan error, error)
+	RunTask(task Task) (string, chan error, error)
 
 	// Shutdown stops the service
 	Shutdown() error
@@ -193,7 +193,7 @@ func (tm *TaskManager) Run(name string, args ...interface{}) (chan error, error)
 }
 
 // RunTask takes a task and runs it
-func (tm *TaskManager) RunTask(task Task, args ...interface{}) (chan error, error) {
+func (tm *TaskManager) RunTask(task Task, args ...interface{}) (string, chan error, error) {
 	// make an errChan to pass along when we fail
 	// close it right away to it returns if listened to
 	closedErrChan := make(chan error)
@@ -202,7 +202,7 @@ func (tm *TaskManager) RunTask(task Task, args ...interface{}) (chan error, erro
 	// make sure task manager is active
 	tm.RLock()
 	if !tm.active {
-		return closedErrChan, ErrNotActive
+		return "", closedErrChan, ErrNotActive
 	}
 	tm.RUnlock()
 
@@ -229,7 +229,7 @@ func (tm *TaskManager) RunTask(task Task, args ...interface{}) (chan error, erro
 		inStore: false,
 	}
 
-	return task.ErrChan, nil
+	return task.Name, task.ErrChan, nil
 }
 
 // Shutdown stops task processing

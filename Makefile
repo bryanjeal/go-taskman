@@ -2,7 +2,7 @@
 
 PACKAGE = github.com/bryanjeal/go-taskman
 
-.PHONY: vendor docker check fmt lint test test-race vet test-cover-html help
+.PHONY: vendor check fmt lint test test-race vet test-cover-html help
 .DEFAULT_GOAL := help
 
 vendor: ## Install govendor and sync taskman's vendored dependencies
