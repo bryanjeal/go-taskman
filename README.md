@@ -10,5 +10,5 @@ Run "tasks" in the background
 go get -v github.com/bryanjeal/go-taskman
 
 ## Help
-cd <path>/github.com/bryanjeal/go-taskman
+cd &lt;path&gt;/github.com/bryanjeal/go-taskman
 Make help
