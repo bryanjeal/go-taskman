@@ -14,4 +14,4 @@ matrix:
 install:
   - make vendor
 script:
-  - make taskman-race check
+  - make check

@@ -21,14 +21,14 @@ test-race: ## Run tests with race detector
 	govendor test -race +local
 
 fmt: ## Run gofmt linter
-	@for d in `govendor list -no-status +local | sed 's/github.com.bryanjeal.taskman/./'` ; do \
+	@for d in `govendor list -no-status +local | sed 's/github.com.bryanjeal.go-taskman/./'` ; do \
 		if [ "`gofmt -l $$d/*.go | tee /dev/stderr`" ]; then \
 			echo "^ improperly formatted go files" && echo && exit 1; \
 		fi \
 	done
 
 lint: ## Run golint linter
-	@for d in `govendor list -no-status +local | sed 's/github.com.bryanjeal.taskman/./'` ; do \
+	@for d in `govendor list -no-status +local | sed 's/github.com.bryanjeal.go-taskman/./'` ; do \
 		if [ "`golint $$d | tee /dev/stderr`" ]; then \
 			echo "^ golint errors!" && echo && exit 1; \
 		fi \
@@ -39,7 +39,7 @@ vet: ## Run go vet linter
 		echo "^ go vet errors!" && echo && exit 1; \
 	fi
 
-test-cover-html: PACKAGES = $(shell govendor list -no-status +local | sed 's/github.com.bryanjeal.taskman/./')
+test-cover-html: PACKAGES = $(shell govendor list -no-status +local | sed 's/github.com.bryanjeal.go-taskman/./')
 test-cover-html: ## Generate test coverage report
 	echo "mode: count" > coverage-all.out
 	$(foreach pkg,$(PACKAGES),\
